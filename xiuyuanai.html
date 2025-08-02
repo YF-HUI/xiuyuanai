@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI导航工具 - 极客AI工具社区</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --border-color: #e2e8f0;
+            --accent-color: #3b82f6;
+            --accent-hover: #2563eb;
+            --code-bg: #f1f5f9;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --accent-color: #60a5fa;
+            --accent-hover: #3b82f6;
+            --code-bg: #1e293b;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .code-font {
+            font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+        }
+
+        .terminal-prompt::before {
+            content: '$ ';
+            color: var(--accent-color);
+            font-weight: 500;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease;
+        }
+
+        .card:hover {
+            border-color: var(--accent-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] .card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .search-box {
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .search-box:focus {
+            border-color: var(--accent-color);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .tag {
+            background: var(--code-bg);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .tag.active {
+            background: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            transition: color 0.2s ease;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: var(--accent-color);
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .grid-adaptive {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .grid-adaptive {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .tooltip {
+            position: relative;
+        }
+
+        .tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            white-space: nowrap;
+            z-index: 1000;
+            border: 1px solid var(--border-color);
+        }
+
+        /* PDF优化样式 */
+        @media print {
+            body { 
+                background: white !important; 
+                color: black !important;
+                font-size: 12px;
+                line-height: 1.4;
+            }
+            .no-print { display: none !important; }
+            .page { display: block !important; }
+            .card { 
+                border: 1px solid #ccc !important; 
+                background: #f9f9f9 !important;
+                margin-bottom: 0.5rem;
+                break-inside: avoid;
+            }
+            .grid-adaptive {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- 导航栏 -->
+    <nav class="sticky top-0 z-50 bg-opacity-90 backdrop-blur-sm border-b" style="background-color: var(--bg-primary); border-color: var(--border-color);">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-8">
+                    <div class="flex items-center space-x-2 cursor-pointer" onclick="showPage('home')">
+                        <i class="fas fa-terminal text-xl" style="color: var(--accent-color);"></i>
+                        <span class="text-xl font-bold code-font">AI.Navigator</span>
+                    </div>
+                    <div class="hidden md:flex space-x-6">
+                        <a href="#" class="nav-link font-medium" onclick="showPage('home')">首页</a>
+                        <a href="#" class="nav-link font-medium" onclick="showPage('tools')">工具</a>
+                        <a href="#" class="nav-link font-medium" onclick="showPage('articles')">文章</a>
+                        <a href="#" class="nav-link font-medium" onclick="showPage('about')">关于</a>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="toggleTheme()" class="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 tooltip" data-tooltip="切换主题">
+                        <i id="theme-icon" class="fas fa-moon" style="color: var(--text-secondary);"></i>
+                    </button>
+                    <button onclick="showPage('about')" class="btn-primary px-4 py-2 rounded-lg font-medium text-sm">
+                        <i class="fas fa-users mr-2"></i>加入社群
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 首页 -->
+    <div id="home" class="page active">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <!-- Hero Section -->
+            <div class="text-center mb-16">
+                <h1 class="text-4xl md:text-6xl font-bold mb-6 code-font">
+                    <span style="color: var(--accent-color);">AI</span> 
+                    <span style="color: var(--text-primary);">Tools</span>
+                    <span style="color: var(--text-muted);">.Navigator</span>
+                </h1>
+                <p class="text-xl mb-8 terminal-prompt code-font" style="color: var(--text-secondary);">极客AI工具导航社区</p>
+                
+                <!-- 搜索框 -->
+                <div class="max-w-2xl mx-auto mb-8">
+                    <div class="relative">
+                        <input 
+                            type="text" 
+                            id="main-search"
+                            placeholder="搜索AI工具或文章..." 
+                            class="search-box w-full px-6 py-4 text-lg rounded-xl pl-12"
+                            onkeyup="handleSearch(event)"
+                        >
+                        <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2" style="color: var(--text-muted);"></i>
+                        <div class="absolute right-4 top-1/2 transform -translate-y-1/2 text-sm code-font" style="color: var(--text-muted);">
+                            Press <kbd class="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">Enter</kbd>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 工具分类 -->
+            <div class="mb-16">
+                <h2 class="text-2xl font-bold mb-8 text-center" style="color: var(--text-primary);">
+                    <i class="fas fa-layer-group mr-2" style="color: var(--accent-color);"></i>
+                    工具分类
+                </h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="card p-6 rounded-xl cursor-pointer text-center" onclick="filterTools('文本生成')">
+                        <i class="fas fa-pen-alt text-3xl mb-4" style="color: var(--accent-color);"></i>
+                        <h3 class="font-semibold code-font">文本生成</h3>
+                        <p class="text-sm mt-2" style="color: var(--text-secondary);">ChatGPT, Claude等</p>
+                    </div>
+                    <div class="card p-6 rounded-xl cursor-pointer text-center" onclick="filterTools('AI绘画')">
+                        <i class="fas fa-palette text-3xl mb-4" style="color: var(--accent-color);"></i>
+                        <h3 class="font-semibold code-font">AI绘画</h3>
+                        <p class="text-sm mt-2" style="color: var(--text-secondary);">Midjourney, DALL-E</p>
+                    </div>
+                    <div class="card p-6 rounded-xl cursor-pointer text-center" onclick="filterTools('效率工具')">
+                        <i class="fas fa-rocket text-3xl mb-4" style="color: var(--accent-color);"></i>
+                        <h3 class="font-semibold code-font">效率工具</h3>
+                        <p class="text-sm mt-2" style="color: var(--text-secondary);">自动化，生产力</p>
+                    </div>
+                    <div class="card p-6 rounded-xl cursor-pointer text-center" onclick="filterTools('代码辅助')">
+                        <i class="fas fa-code text-3xl mb-4" style="color: var(--accent-color);"></i>
+                        <h3 class="font-semibold code-font">代码辅助</h3>
+                        <p class="text-sm mt-2" style="color: var(--text-secondary);">GitHub Copilot等</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 热门推荐 -->
+            <div class="mb-16">
+                <h2 class="text-2xl font-bold mb-8 text-center" style="color: var(--text-primary);">
+                    <i class="fas fa-fire mr-2" style="color: var(--accent-color);"></i>
+                    本周热门
+                </h2>
+                <div class="grid-adaptive">
+                    <div class="card p-6 rounded-xl">
+                        <div class="flex items-start space-x-4">
+                            <div class="w-12 h-12 bg-gradient-to-br from-green-400 to-blue-500 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-comments text-white"></i>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-lg mb-2 code-font">ChatGPT</h3>
+                                <p class="mb-3" style="color: var(--text-secondary);">最强大的对话AI工具，支持多轮对话和代码生成</p>
+                                <div class="flex items-center justify-between">
+                                    <span class="tag px-3 py-1 rounded-full text-sm code-font">文本生成</span>
+                                    <button class="btn-primary px-4 py-2 rounded-lg text-sm" onclick="viewTool('chatgpt')">
+                                        查看详情 <i class="fas fa-external-link-alt ml-1"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card p-6 rounded-xl">
+                        <div class="flex items-start space-x-4">
+                            <div class="w-12 h-12 bg-gradient-to-br from-purple-400 to-pink-500 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-palette text-white"></i>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-lg mb-2 code-font">Midjourney</h3>
+                                <p class="mb-3" style="color: var(--text-secondary);">顶级AI绘画工具，创造惊艳的艺术作品</p>
+                                <div class="flex items-center justify-between">
+                                    <span class="tag px-3 py-1 rounded-full text-sm code-font">AI绘画</span>
+                                    <button class="btn-primary px-4 py-2 rounded-lg text-sm" onclick="viewTool('midjourney')">
+                                        查看详情 <i class="fas fa-external-link-alt ml-1"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card p-6 rounded-xl">
+                        <div class="flex items-start space-x-4">
+                            <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-cyan-500 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-code text-white"></i>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-lg mb-2 code-font">GitHub Copilot</h3>
+                                <p class="mb-3" style="color: var(--text-secondary);">AI编程助手，极大提升开发效率</p>
+                                <div class="flex items-center justify-between">
+                                    <span class="tag px-3 py-1 rounded-full text-sm code-font">代码辅助</span>
+                                    <button class="btn-primary px-4 py-2 rounded-lg text-sm" onclick="viewTool('copilot')">
+                                        查看详情 <i class="fas fa-external-link-alt ml-1"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 精选文章 -->
+            <div class="mb-16">
+                <h2 class="text-2xl font-bold mb-8 text-center" style="color: var(--text-primary);">
+                    <i class="fas fa-star mr-2" style="color: var(--accent-color);"></i>
+                    精选文章
+                </h2>
+                <div class="space-y-4">
+                    <div class="card p-6 rounded-xl cursor-pointer" onclick="viewArticle('ai-future')">
+                        <div class="flex items-center space-x-4">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-lg mb-2">AI工具如何改变我们的工作方式</h3>
+                                <p class="mb-3" style="color: var(--text-secondary);">探讨人工智能工具对现代工作流程的深远影响和未来趋势</p>
+                                <div class="flex items-center space-x-4">
+                                    <span class="tag px-3 py-1 rounded-full text-sm code-font">AI趋势</span>
+                                    <span class="text-sm" style="color: var(--text-muted);">2024-01-15</span>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
+                        </div>
+                    </div>
+                    <div class="card p-6 rounded-xl cursor-pointer" onclick="viewArticle('prompt-guide')">
+                        <div class="flex items-center space-x-4">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-lg mb-2">Prompt工程师指南：如何与AI高效对话</h3>
+                                <p class="mb-3" style="color: var(--text-secondary);">掌握AI对话技巧，让AI工具为你创造更大价值</p>
+                                <div class="flex items-center space-x-4">
+                                    <span class="tag px-3 py-1 rounded-full text-sm code-font">实用技巧</span>
+                                    <span class="text-sm" style="color: var(--text-muted);">2024-01-12</span>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-right" style="color: var(--text-muted);"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 工具库页面 -->
+    <div id="tools" class="page">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold mb-4 code-font" style="color: var(--text-primary);">
+                    <i class="fas fa-tools mr-3" style="color: var(--accent-color);"></i>
+                    AI工具库
+                </h1>
+                <p class="text-lg" style="color: var(--text-secondary);">发现最优质的AI工具，提升工作效率</p>
+            </div>
+
+            <!-- 搜索和筛选 -->
+            <div class="mb-8">
+                <div class="flex flex-col md:flex-row gap-4 mb-6">
+                    <div class="flex-1">
+                        <input 
+                            type="text" 
+                            id="tools-search"
+                            placeholder="搜索工具名称、描述..." 
+                            class="search-box w-full px-4 py-3 rounded-lg"
+                            onkeyup="searchTools()"
+                        >
+                    </div>
+                    <select id="category-filter" class="search-box px-4 py-3 rounded-lg" onchange="filterToolsBy()">
+                        <option value="">所有分类</option>
+                        <option value="文本生成">文本生成</option>
+                        <option value="AI绘画">AI绘画</option>
+                        <option value="效率工具">效率工具</option>
+                        <option value="代码辅助">代码辅助</option>
+                        <option value="音频处理">音频处理</option>
+                        <option value="视频制作">视频制作</option>
+                    </select>
+                </div>
+
+                <!-- 标签筛选 -->
+                <div class="flex flex-wrap gap-2 mb-6">
+                    <button class="tag px-4 py-2 rounded-full text-sm code-font transition-all hover:border-blue-500" onclick="toggleTag(this, '免费')">免费</button>
+                    <button class="tag px-4 py-2 rounded-full text-sm code-font transition-all hover:border-blue-500" onclick="toggleTag(this, '开源')">开源</button>
+                    <button class="tag px-4 py-2 rounded-full text-sm code-font transition-all hover:border-blue-500" onclick="toggleTag(this, 'API')">API</button>
+                    <button class="tag px-4 py-2 rounded-full text-sm code-font transition-all hover:border-blue-500" onclick="toggleTag(this, '中文')">中文支持</button>
+                </div>
+            </div>
+
+            <!-- 工具列表 -->
+            <div id="tools-grid" class="grid-adaptive">
+                <!-- 工具卡片会通过JavaScript动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 工具详情页 -->
+    <div id="tool-detail" class="page">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div id="tool-detail-content">
+                <!-- 工具详情内容会动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 文章页面 -->
+    <div id="articles" class="page">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold mb-4 code-font" style="color: var(--text-primary);">
+                    <i class="fas fa-newspaper mr-3" style="color: var(--accent-color);"></i>
+                    AI文章专栏
+                </h1>
+                <p class="text-lg" style="color: var(--text-secondary);">深度分析AI工具，分享使用心得</p>
+            </div>
+
+            <!-- 文章筛选 -->
+            <div class="mb-8">
+                <div class="flex flex-wrap gap-2">
+                    <button class="tag px-4 py-2 rounded-full text-sm code-font transition-all hover:border-blue-500" onclick="toggleArticleTag(this, '全部')">全部</button>
+                    <button class="tag px-4 py-2 rounded-full text-sm code-font transition-all hover:border-blue-500" onclick="toggleArticleTag(this, 'AI趋势')">AI趋势</button>
+                    <button class="tag px-4 py-2 rounded-full text-sm code-font transition-all hover:border-blue-500" onclick="toggleArticleTag(this, '实用技巧')">实用技巧</button>
+                    <button class="tag px-4 py-2 rounded-full text-sm code-font transition-all hover:border-blue-500" onclick="toggleArticleTag(this, '工具评测')">工具评测</button>
+                    <button class="tag px-4 py-2 rounded-full text-sm code-font transition-all hover:border-blue-500" onclick="toggleArticleTag(this, '深度分析')">深度分析</button>
+                </div>
+            </div>
+
+            <!-- 文章列表 -->
+            <div id="articles-list" class="space-y-6">
+                <!-- 文章列表会通过JavaScript动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 文章详情页 -->
+    <div id="article-detail" class="page">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div id="article-detail-content">
+                <!-- 文章详情内容会动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 关于/社群页面 -->
+    <div id="about" class="page">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="text-center mb-12">
+                <h1 class="text-3xl font-bold mb-6 code-font" style="color: var(--text-primary);">
+                    <i class="fas fa-users mr-3" style="color: var(--accent-color);"></i>
+                    关于我们
+                </h1>
+                <p class="text-xl mb-8" style="color: var(--text-secondary);">
+                    打造极简、极客、社群氛围的AI工具导航社区
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8 mb-12">
+                <div class="card p-8 rounded-xl">
+                    <h2 class="text-xl font-bold mb-4 code-font" style="color: var(--text-primary);">
+                        <i class="fas fa-bullseye mr-2" style="color: var(--accent-color);"></i>
+                        我们的使命
+                    </h2>
+                    <p class="mb-4" style="color: var(--text-secondary);">
+                        帮助AI爱好者、创作者、极客朋友高效发现、筛选和交流AI应用，让人工智能真正服务于每个人的创造力。
+                    </p>
+                    <ul class="space-y-2 text-sm" style="color: var(--text-secondary);">
+                        <li><i class="fas fa-check mr-2" style="color: var(--accent-color);"></i>精选优质AI工具</li>
+                        <li><i class="fas fa-check mr-2" style="color: var(--accent-color);"></i>提供实用教程</li>
+                        <li><i class="fas fa-check mr-2" style="color: var(--accent-color);"></i>建设交流社群</li>
+                    </ul>
+                </div>
+
+                <div class="card p-8 rounded-xl">
+                    <h2 class="text-xl font-bold mb-4 code-font" style="color: var(--text-primary);">
+                        <i class="fas fa-heart mr-2" style="color: var(--accent-color);"></i>
+                        加入社群
+                    </h2>
+                    <p class="mb-6" style="color: var(--text-secondary);">
+                        与1000+AI爱好者一起探索人工智能的无限可能
+                    </p>
+                    <div class="space-y-3">
+                        <a href="#" class="flex items-center p-3 rounded-lg border transition-colors hover:border-blue-500" style="border-color: var(--border-color);">
+                            <i class="fab fa-weixin text-xl mr-3" style="color: #07C160;"></i>
+                            <div>
+                                <div class="font-medium">微信群</div>
+                                <div class="text-sm" style="color: var(--text-muted);">扫码添加群助手</div>
+                            </div>
+                        </a>
+                        <a href="#" class="flex items-center p-3 rounded-lg border transition-colors hover:border-blue-500" style="border-color: var(--border-color);">
+                            <i class="fab fa-telegram text-xl mr-3" style="color: #0088cc;"></i>
+                            <div>
+                                <div class="font-medium">Telegram</div>
+                                <div class="text-sm" style="color: var(--text-muted);">@ai_navigator_group</div>
+                            </div>
+                        </a>
+                        <a href="#" class="flex items-center p-3 rounded-lg border transition-colors hover:border-blue-500" style="border-color: var(--border-color);">
+                            <i class="fab fa-discord text-xl mr-3" style="color: #5865F2;"></i>
+                            <div>
+                                <div class="font-medium">Discord</div>
+                                <div class="text-sm" style="color: var(--text-muted);">AI Navigator Community</div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 项目统计 -->
+            <div class="card p-8 rounded-xl mb-8">
+                <h2 class="text-xl font-bold mb-6 text-center code-font" style="color: var(--text-primary);">
+                    <i class="fas fa-chart-bar mr-2" style="color: var(--accent-color);"></i>
+                    项目数据
+                </h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+                    <div>
+                        <div class="text-3xl font-bold code-font mb-2" style="color: var(--accent-color);">150+</div>
+                        <div class="text-sm" style="color: var(--text-secondary);">AI工具</div>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-bold code-font mb-2" style="color: var(--accent-color);">50+</div>
+                        <div class="text-sm" style="color: var(--text-secondary);">深度文章</div>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-bold code-font mb-2" style="color: var(--accent-color);">1000+</div>
+                        <div class="text-sm" style="color: var(--text-secondary);">社群成员</div>
+                    </div>
+                    <div>
+                        <div class="text-3xl font-bold code-font mb-2" style="color: var(--accent-color);">24/7</div>
+                        <div class="text-sm" style="color: var(--text-secondary);">持续更新</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 联系方式 -->
+            <div class="text-center">
+                <h2 class="text-xl font-bold mb-4 code-font" style="color: var(--text-primary);">联系我们</h2>
+                <p class="text-sm" style="color: var(--text-muted);">
+                    邮箱: hello@ai-navigator.com | 网站: https://ai-navigator.com
+                </p>
+                <p class="text-xs mt-4" style="color: var(--text-muted);">
+                    © 2024 AI Navigator. Made with ❤️ for AI community.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 数据模拟
+        const toolsData = [
+            {
+                id: 'chatgpt',
+                name: 'ChatGPT',
+                category: '文本生成',
+                description: '最强大的对话AI工具，支持多轮对话和代码生成',
+                fullDescription: 'ChatGPT是OpenAI开发的大型语言模型，能够进行自然语言对话、文本生成、代码编写、问题解答等多种任务。它具有强大的理解能力和创造性，是目前最受欢迎的AI工具之一。',
+                logo: '🤖',
+                url: 'https://chat.openai.com',
+                tags: ['免费', 'API', '中文'],
+                rating: 4.8,
+                features: ['多轮对话', '代码生成', '文本创作', '问题解答', '多语言支持'],
+                related: ['claude', 'bard']
+            },
+            {
+                id: 'midjourney',
+                name: 'Midjourney',
+                category: 'AI绘画',
+                description: '顶级AI绘画工具，创造惊艳的艺术作品',
+                fullDescription: 'Midjourney是一款基于Discord的AI绘画工具，以其卓越的艺术质量和创意表现而闻名。用户只需输入文字描述，就能生成高质量的艺术作品，特别擅长创作概念艺术、插画和抽象作品。',
+                logo: '🎨',
+                url: 'https://midjourney.com',
+                tags: ['付费'],
+                rating: 4.9,
+                features: ['高质量绘画', '多种风格', 'Discord集成', '商业授权', '社区分享'],
+                related: ['dalle', 'stable-diffusion']
+            },
+            {
+                id: 'copilot',
+                name: 'GitHub Copilot',
+                category: '代码辅助',
+                description: 'AI编程助手，极大提升开发效率',
+                fullDescription: 'GitHub Copilot是由GitHub和OpenAI合作开发的AI编程助手，能够根据上下文自动补全代码、生成函数、提供编程建议。它支持多种编程语言，是程序员的得力助手。',
+                logo: '👨‍💻',
+                url: 'https://github.com/features/copilot',
+                tags: ['付费', 'API'],
+                rating: 4.7,
+                features: ['代码补全', '函数生成', '多语言支持', 'IDE集成', '学习上下文'],
+                related: ['codewhisperer', 'tabnine']
+            },
+            {
+                id: 'claude',
+                name: 'Claude',
+                category: '文本生成',
+                description: 'Anthropic开发的安全AI助手',
+                fullDescription: 'Claude是Anthropic开发的AI助手，注重安全性和有用性。它在对话、分析、写作等方面表现出色，特别擅长处理长文本和复杂推理任务。',
+                logo: '🧠',
+                url: 'https://claude.ai',
+                tags: ['免费', '中文'],
+                rating: 4.6,
+                features: ['长文本处理', '安全对话', '复杂推理', '文档分析', '创意写作'],
+                related: ['chatgpt', 'bard']
+            },
+            {
+                id: 'stable-diffusion',
+                name: 'Stable Diffusion',
+                category: 'AI绘画',
+                description: '开源AI图像生成模型',
+                fullDescription: 'Stable Diffusion是一个开源的AI图像生成模型，用户可以在本地运行或通过各种在线平台使用。它支持文本到图像、图像到图像等多种生成模式。',
+                logo: '🖼️',
+                url: 'https://stability.ai',
+                tags: ['开源', '免费'],
+                rating: 4.5,
+                features: ['开源免费', '本地运行', '可定制', '多种模型', '社区支持'],
+                related: ['midjourney', 'dalle']
+            },
+            {
+                id: 'notion-ai',
+                name: 'Notion AI',
+                category: '效率工具',
+                description: '集成在Notion中的AI写作助手',
+                fullDescription: 'Notion AI是Notion推出的AI功能，直接集成在Notion工作空间中，可以帮助用户写作、总结、翻译、制作表格等，大大提升工作效率。',
+                logo: '📝',
+                url: 'https://notion.so',
+                tags: ['付费', '中文'],
+                rating: 4.4,
+                features: ['文档写作', '内容总结', '表格制作', '翻译功能', '工作流集成'],
+                related: ['chatgpt', 'jasper']
+            }
+        ];
+
+        const articlesData = [
+            {
+                id: 'ai-future',
+                title: 'AI工具如何改变我们的工作方式',
+                summary: '探讨人工智能工具对现代工作流程的深远影响和未来趋势',
+                category: 'AI趋势',
+                date: '2024-01-15',
+                author: 'AI Navigator Team',
+                content: `
+                    <h2>引言</h2>
+                    <p>人工智能正在以前所未有的速度改变着我们的工作方式。从自动化重复性任务到增强创造性工作，AI工具正在重新定义各行各业的工作流程。</p>
+                    
+                    <h2>AI工具的主要影响领域</h2>
+                    <h3>1. 内容创作</h3>
+                    <p>AI写作工具如ChatGPT、Jasper等正在帮助内容创作者:</p>
+                    <ul>
+                        <li>快速生成初稿和创意</li>
+                        <li>自动化SEO优化</li>
+                        <li>多语言内容翻译</li>
+                        <li>提升写作效率和质量</li>
+                    </ul>
+                    
+                    <h3>2. 代码开发</h3>
+                    <p>编程助手工具改变了软件开发:</p>
+                    <ul>
+                        <li>自动代码补全和生成</li>
+                        <li>代码审查和优化建议</li>
+                        <li>文档自动生成</li>
+                        <li>错误检测和修复</li>
+                    </ul>
+                    
+                    <h3>3. 设计创作</h3>
+                    <p>AI绘画和设计工具正在革命性地改变创意行业:</p>
+                    <ul>
+                        <li>快速概念设计和原型制作</li>
+                        <li>自动化重复性设计任务</li>
+                        <li>个性化设计方案生成</li>
+                        <li>设计灵感和创意激发</li>
+                    </ul>
+                    
+                    <h2>未来展望</h2>
+                    <p>随着AI技术的不断发展，我们可以预期:</p>
+                    <ul>
+                        <li>更加智能和个性化的AI助手</li>
+                        <li>跨模态AI工具的普及</li>
+                        <li>AI与人类协作模式的进一步优化</li>
+                        <li>新兴职业和技能需求的出现</li>
+                    </ul>
+                    
+                    <h2>结论</h2>
+                    <p>AI工具不是要取代人类工作，而是要增强人类的能力。关键在于学会如何有效地与AI协作，将其作为提升效率和创造力的工具。</p>
+                `,
+                tags: ['AI趋势', '工作效率', '未来职场']
+            },
+            {
+                id: 'prompt-guide',
+                title: 'Prompt工程师指南：如何与AI高效对话',
+                summary: '掌握AI对话技巧，让AI工具为你创造更大价值',
+                category: '实用技巧',
+                date: '2024-01-12',
+                author: 'AI Navigator Team',
+                content: `
+                    <h2>什么是Prompt工程</h2>
+                    <p>Prompt工程是指设计和优化与AI模型交互的文本指令的技术。一个好的prompt可以显著提升AI的输出质量和准确性。</p>
+                    
+                    <h2>Prompt设计的基本原则</h2>
+                    <h3>1. 明确性</h3>
+                    <p>使用清晰、具体的语言描述你的需求:</p>
+                    <pre><code>❌ 帮我写一篇文章
+✅ 请写一篇1000字的关于远程工作效率提升的文章，包含3个实用技巧</code></pre>
+                    
+                    <h3>2. 结构化</h3>
+                    <p>使用标准格式组织你的prompt:</p>
+                    <pre><code>角色: 你是一个专业的营销文案专家
+任务: 为新产品撰写推广文案
+背景: 这是一款面向年轻人的智能手表
+要求: 文案要有吸引力，突出科技感，字数控制在200字以内</code></pre>
+                    
+                    <h3>3. 上下文提供</h3>
+                    <p>给AI提供足够的背景信息:</p>
+                    <ul>
+                        <li>目标受众</li>
+                        <li>使用场景</li>
+                        <li>预期效果</li>
+                        <li>限制条件</li>
+                    </ul>
+                    
+                    <h2>常用Prompt模板</h2>
+                    <h3>问题解决模板</h3>
+                    <pre><code>我遇到了[具体问题]
+背景信息：[相关背景]
+已尝试方案：[已有尝试]
+请提供3个可行的解决方案，并分析各自的优缺点</code></pre>
+                    
+                    <h3>内容创作模板</h3>
+                    <pre><code>请帮我创作一篇关于[主题]的[内容类型]
+目标受众：[受众描述]
+风格要求：[风格描述]
+字数要求：[字数范围]
+包含要点：[关键要点]</code></pre>
+                    
+                    <h2>高级技巧</h2>
+                    <h3>1. 角色扮演</h3>
+                    <p>让AI扮演特定角色能获得更专业的回答</p>
+                    
+                    <h3>2. 思维链提示</h3>
+                    <p>引导AI展示推理过程："请一步步分析这个问题"</p>
+                    
+                    <h3>3. 示例学习</h3>
+                    <p>提供好的示例让AI模仿学习</p>
+                    
+                    <h2>常见误区</h2>
+                    <ul>
+                        <li>过于简短或模糊的指令</li>
+                        <li>一次性要求过多任务</li>
+                        <li>忽略输出格式要求</li>
+                        <li>不进行迭代优化</li>
+                    </ul>
+                    
+                    <h2>总结</h2>
+                    <p>掌握prompt工程技巧需要不断实践和迭代。记住，与AI对话是一个协作过程，良好的沟通技巧会让你事半功倍。</p>
+                `
+            }
+        ];
+
+        // 当前状态
+        let currentPage = 'home';
+        let filteredTools = [...toolsData];
+        let filteredArticles = [...articlesData];
+        let selectedTags = [];
+        let selectedArticleTags = [];
+
+        // 页面切换
+        function showPage(pageId) {
+            // 隐藏所有页面
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // 显示目标页面
+            document.getElementById(pageId).classList.add('active');
+            currentPage = pageId;
+            
+            // 更新导航状态
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // 根据页面加载内容
+            if (pageId === 'tools') {
+                renderTools();
+            } else if (pageId === 'articles') {
+                renderArticles();
+            }
+            
+            // 添加淡入动画
+            document.getElementById(pageId).classList.add('fade-in');
+        }
+
+        // 主题切换
+        function toggleTheme() {
+            const html = document.documentElement;
+            const themeIcon = document.getElementById('theme-icon');
+            
+            if (html.getAttribute('data-theme') === 'dark') {
+                html.removeAttribute('data-theme');
+                themeIcon.className = 'fas fa-moon';
+                localStorage.setItem('theme', 'light');
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                themeIcon.className = 'fas fa-sun';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // 初始化主题
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.getElementById('theme-icon').className = 'fas fa-sun';
+            }
+        }
+
+        // 搜索功能
+        function handleSearch(event) {
+            if (event.key === 'Enter') {
+                const query = event.target.value.trim();
+                if (query) {
+                    // 显示工具页面并搜索
+                    showPage('tools');
+                    document.getElementById('tools-search').value = query;
+                    searchTools();
+                }
+            }
+        }
+
+        function searchTools() {
+            const query = document.getElementById('tools-search').value.toLowerCase();
+            const category = document.getElementById('category-filter').value;
+            
+            filteredTools = toolsData.filter(tool => {
+                const matchesQuery = !query || 
+                    tool.name.toLowerCase().includes(query) || 
+                    tool.description.toLowerCase().includes(query) ||
+                    tool.tags.some(tag => tag.toLowerCase().includes(query));
+                
+                const matchesCategory = !category || tool.category === category;
+                
+                const matchesTags = selectedTags.length === 0 || 
+                    selectedTags.every(tag => tool.tags.includes(tag));
+                
+                return matchesQuery && matchesCategory && matchesTags;
+            });
+            
+            renderTools();
+        }
+
+        // 工具筛选
+        function filterTools(category) {
+            showPage('tools');
+            document.getElementById('category-filter').value = category;
+            searchTools();
+        }
+
+        function filterToolsBy() {
+            searchTools();
+        }
+
+        function toggleTag(button, tag) {
+            if (selectedTags.includes(tag)) {
+                selectedTags = selectedTags.filter(t => t !== tag);
+                button.classList.remove('active');
+            } else {
+                selectedTags.push(tag);
+                button.classList.add('active');
+            }
+            searchTools();
+        }
+
+        // 渲染工具列表
+        function renderTools() {
+            const container = document.getElementById('tools-grid');
+            
+            if (filteredTools.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <i class="fas fa-search text-4xl mb-4" style="color: var(--text-muted);"></i>
+                        <h3 class="text-xl font-semibold mb-2">未找到相关工具</h3>
+                        <p style="color: var(--text-secondary);">请尝试其他关键词或筛选条件</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = filteredTools.map(tool => `
+                <div class="card p-6 rounded-xl cursor-pointer" onclick="viewTool('${tool.id}')">
+                    <div class="flex items-start space-x-4">
+                        <div class="text-3xl">${tool.logo}</div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-semibold text-lg mb-2 code-font">${tool.name}</h3>
+                            <p class="mb-3 text-sm line-clamp-2" style="color: var(--text-secondary);">${tool.description}</p>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-2">
+                                    <span class="tag px-2 py-1 rounded text-xs code-font">${tool.category}</span>
+                                    ${tool.tags.slice(0, 2).map(tag => 
+                                        `<span class="tag px-2 py-1 rounded text-xs code-font">${tag}</span>`
+                                    ).join('')}
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-star text-yellow-400 mr-1"></i>
+                                        <span class="text-sm code-font">${tool.rating}</span>
+                                    </div>
+                                    <i class="fas fa-external-link-alt text-sm" style="color: var(--text-muted);"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 查看工具详情
+        function viewTool(toolId) {
+            const tool = toolsData.find(t => t.id === toolId);
+            if (!tool) return;
+            
+            const relatedTools = tool.related ? toolsData.filter(t => tool.related.includes(t.id)) : [];
+            
+            document.getElementById('tool-detail-content').innerHTML = `
+                <div class="mb-6">
+                    <button onclick="showPage('tools')" class="flex items-center text-sm mb-4 hover:text-blue-500 transition-colors" style="color: var(--text-secondary);">
+                        <i class="fas fa-arrow-left mr-2"></i>返回工具库
+                    </button>
+                </div>
+                
+                <div class="mb-8">
+                    <div class="flex items-start space-x-6 mb-6">
+                        <div class="text-6xl">${tool.logo}</div>
+                        <div class="flex-1">
+                            <h1 class="text-3xl font-bold mb-2 code-font">${tool.name}</h1>
+                            <p class="text-xl mb-4" style="color: var(--text-secondary);">${tool.description}</p>
+                            <div class="flex items-center space-x-4 mb-4">
+                                <span class="tag px-3 py-1 rounded-full code-font">${tool.category}</span>
+                                <div class="flex items-center">
+                                    <i class="fas fa-star text-yellow-400 mr-1"></i>
+                                    <span class="code-font mr-2">${tool.rating}</span>
+                                    <span class="text-sm" style="color: var(--text-muted);">(基于社区评价)</span>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-2 mb-6">
+                                ${tool.tags.map(tag => 
+                                    `<span class="tag px-3 py-1 rounded-full text-sm code-font">${tag}</span>`
+                                ).join('')}
+                            </div>
+                            <a href="${tool.url}" target="_blank" class="btn-primary px-6 py-3 rounded-lg font-medium inline-flex items-center">
+                                <i class="fas fa-external-link-alt mr-2"></i>
+                                前往官网
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="grid md:grid-cols-3 gap-8 mb-12">
+                    <div class="md:col-span-2">
+                        <div class="card p-6 rounded-xl mb-6">
+                            <h2 class="text-xl font-bold mb-4 code-font">
+                                <i class="fas fa-info-circle mr-2" style="color: var(--accent-color);"></i>
+                                详细介绍
+                            </h2>
+                            <p class="leading-relaxed" style="color: var(--text-secondary);">${tool.fullDescription}</p>
+                        </div>
+                        
+                        <div class="card p-6 rounded-xl">
+                            <h2 class="text-xl font-bold mb-4 code-font">
+                                <i class="fas fa-list-ul mr-2" style="color: var(--accent-color);"></i>
+                                主要功能
+                            </h2>
+                            <ul class="space-y-2">
+                                ${tool.features.map(feature => 
+                                    `<li class="flex items-center">
+                                        <i class="fas fa-check mr-3" style="color: var(--accent-color);"></i>
+                                        <span style="color: var(--text-secondary);">${feature}</span>
+                                    </li>`
+                                ).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div class="card p-6 rounded-xl">
+                            <h3 class="text-lg font-bold mb-4 code-font">
+                                <i class="fas fa-heart mr-2" style="color: var(--accent-color);"></i>
+                                相关推荐
+                            </h3>
+                            ${relatedTools.length > 0 ? `
+                                <div class="space-y-4">
+                                    ${relatedTools.map(relatedTool => `
+                                        <div class="flex items-center space-x-3 p-3 rounded-lg border cursor-pointer hover:border-blue-500 transition-colors"
+                                             style="border-color: var(--border-color);"
+                                             onclick="viewTool('${relatedTool.id}')">
+                                            <div class="text-2xl">${relatedTool.logo}</div>
+                                            <div class="flex-1 min-w-0">
+                                                <div class="font-medium code-font">${relatedTool.name}</div>
+                                                <div class="text-sm truncate" style="color: var(--text-secondary);">${relatedTool.description}</div>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : `
+                                <p class="text-sm" style="color: var(--text-muted);">暂无相关推荐</p>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            showPage('tool-detail');
+        }
+
+        // 文章相关功能
+        function toggleArticleTag(button, tag) {
+            // 清除其他标签的激活状态
+            document.querySelectorAll('#articles .tag').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            button.classList.add('active');
+            
+            if (tag === '全部') {
+                selectedArticleTags = [];
+            } else {
+                selectedArticleTags = [tag];
+            }
+            
+            filterArticles();
+        }
+
+        function filterArticles() {
+            if (selectedArticleTags.length === 0) {
+                filteredArticles = [...articlesData];
+            } else {
+                filteredArticles = articlesData.filter(article => 
+                    selectedArticleTags.includes(article.category)
+                );
+            }
+            renderArticles();
+        }
+
+        function renderArticles() {
+            const container = document.getElementById('articles-list');
+            
+            container.innerHTML = filteredArticles.map(article => `
+                <div class="card p-6 rounded-xl cursor-pointer hover:border-blue-500 transition-colors" onclick="viewArticle('${article.id}')">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-xl font-semibold mb-3 hover:text-blue-500 transition-colors">${article.title}</h3>
+                            <p class="mb-4 leading-relaxed" style="color: var(--text-secondary);">${article.summary}</p>
+                            <div class="flex items-center space-x-4">
+                                <span class="tag px-3 py-1 rounded-full text-sm code-font">${article.category}</span>
+                                <span class="text-sm" style="color: var(--text-muted);">
+                                    <i class="fas fa-calendar mr-1"></i>${article.date}
+                                </span>
+                                <span class="text-sm" style="color: var(--text-muted);">
+                                    <i class="fas fa-user mr-1"></i>${article.author}
+                                </span>
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-right ml-4" style="color: var(--text-muted);"></i>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function viewArticle(articleId) {
+            const article = articlesData.find(a => a.id === articleId);
+            if (!article) return;
+            
+            document.getElementById('article-detail-content').innerHTML = `
+                <div class="mb-6">
+                    <button onclick="showPage('articles')" class="flex items-center text-sm mb-4 hover:text-blue-500 transition-colors" style="color: var(--text-secondary);">
+                        <i class="fas fa-arrow-left mr-2"></i>返回文章列表
+                    </button>
+                </div>
+                
+                <article class="prose prose-lg max-w-none">
+                    <header class="mb-8">
+                        <h1 class="text-3xl font-bold mb-4 leading-tight">${article.title}</h1>
+                        <div class="flex items-center space-x-4 mb-6">
+                            <span class="tag px-3 py-1 rounded-full code-font">${article.category}</span>
+                            <span class="text-sm" style="color: var(--text-muted);">
+                                <i class="fas fa-calendar mr-1"></i>${article.date}
+                            </span>
+                            <span class="text-sm" style="color: var(--text-muted);">
+                                <i class="fas fa-user mr-1"></i>${article.author}
+                            </span>
+                        </div>
+                        <p class="text-xl leading-relaxed" style="color: var(--text-secondary);">${article.summary}</p>
+                    </header>
+                    
+                    <div class="content" style="color: var(--text-primary);">
+                        ${article.content}
+                    </div>
+                </article>
+                
+                <div class="mt-12 pt-8 border-t" style="border-color: var(--border-color);">
+                    <div class="flex items-center justify-between">
+                        <div class="flex space-x-4">
+                            <button class="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <i class="fas fa-thumbs-up"></i>
+                                <span>点赞</span>
+                            </button>
+                            <button class="flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <i class="fas fa-share"></i>
+                                <span>分享</span>
+                            </button>
+                        </div>
+                        <div class="text-sm" style="color: var(--text-muted);">
+                            如有疑问，欢迎在社群中讨论
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            showPage('article-detail');
+        }
+
+        // 键盘导航
+        document.addEventListener('keydown', function(e) {
+            // Alt + 数字键快速导航
+            if (e.altKey) {
+                switch(e.key) {
+                    case '1':
+                        e.preventDefault();
+                        showPage('home');
+                        break;
+                    case '2':
+                        e.preventDefault();
+                        showPage('tools');
+                        break;
+                    case '3':
+                        e.preventDefault();
+                        showPage('articles');
+                        break;
+                    case '4':
+                        e.preventDefault();
+                        showPage('about');
+                        break;
+                }
+            }
+            
+            // 焦点搜索框
+            if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                const searchBox = currentPage === 'home' ? 
+                    document.getElementById('main-search') : 
+                    document.getElementById('tools-search');
+                if (searchBox) {
+                    searchBox.focus();
+                }
+            }
+        });
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initTheme();
+            renderTools();
+            renderArticles();
+            
+            // 设置默认文章标签状态
+            const allButton = document.querySelector('#articles .tag');
+            if (allButton) {
+                allButton.classList.add('active');
+            }
+            
+            // 添加加载动画
+            setTimeout(() => {
+                document.body.classList.add('loaded');
+            }, 100);
+        });
+    </script>
+</body>
+</html>
